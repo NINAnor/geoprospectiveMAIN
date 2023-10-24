@@ -1,0 +1,21 @@
+Package: geoprospectiveMAIN
+Title: GEOPROSPECTIVE
+Version: 0.0.0.9000
+Authors@R: 
+    person("Reto", "Spielhofer", , "reto.spielhofer@nina.no", role = c("cre", "aut"))
+Description: The main app of the Geoprospective workflow
+License: MIT + file LICENSE
+Imports: 
+    config (>= 0.3.2),
+    golem (>= 0.4.1),
+    shiny (>= 1.7.5)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.2.3
+Suggests: 
+    covr,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
