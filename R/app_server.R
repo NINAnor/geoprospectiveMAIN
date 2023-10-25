@@ -30,7 +30,17 @@ app_server <- function(input, output, session) {
 
   observeEvent(input$sub0,{
     if(input$study_id %in% studies$studyID){
-      rgee::ee_Initialize()
+      # rgee::ee_Initialize()
+      # rgee::ee_install_set_pyenv("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
+      # reticulate::use_python("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
+      rgee::ee_Initialize(user = 'reto.spielhofer@nina.no')
+      # bq_auth(path = "C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/PAREUS/pareus-4c675ffa9441.json")
+      # con <- dbConnect(
+      #   bigrquery::bigquery(),
+      #   project = "pareus",
+      #   dataset = "soc_eco_map",
+      #   billing = "pareus"
+      # )
       updateTabsetPanel(session, "inTabset",
                         selected = "p1")
       hideTab(inputId = "inTabset",
@@ -71,6 +81,8 @@ app_server <- function(input, output, session) {
 
   })
 
+
+
   sf_stud_geom<-eventReactive(input$sub0,{
     if(input$study_id %in% studies$studyID){
       sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
@@ -80,6 +92,28 @@ app_server <- function(input, output, session) {
     }else{
       sf_stud_geom<-NULL
     }
+
+  })
+
+  ee_bbox_geom<-eventReactive(input$sub0,{
+    req(sf_stud_geom)
+    sf_stud_geom<-sf_stud_geom()
+    bb_sf<-st_bbox(sf_stud_geom)
+
+    rlist <- list(xmin = as.numeric(bb_sf[1]), xmax = as.numeric(bb_sf[3]),ymin = as.numeric(bb_sf[2]), as.numeric(bb_sf[4]))
+    ROI <- c(rlist$xmin, rlist$ymin,
+             rlist$xmax, rlist$ymin,
+             rlist$xmax, rlist$ymax,
+             rlist$xmin, rlist$ymax,
+             rlist$xmin, rlist$ymin)
+    ee_bbox_geom <- matrix(ROI, ncol = 2, byrow = TRUE) %>%
+      list() %>%
+      st_polygon() %>%
+      st_sfc() %>%
+      st_set_crs(4326) %>%
+      sf_as_ee()
+
+
 
   })
 
@@ -188,7 +222,7 @@ app_server <- function(input, output, session) {
     })
 
     lapply(1:num_tabs(), function(i) {
-      mod_delphi_round1_server(paste0("delphi_round1_",i), isolate(ee_stud_geom()), isolate(sf_stud_geom()), isolate(comb()),rand_es_sel[i,],
+      mod_delphi_round1_server(paste0("delphi_round1_",i), isolate(ee_stud_geom()), isolate(ee_bbox_geom()), isolate(sf_stud_geom()), isolate(comb()),rand_es_sel[i,],
                                isolate(userID()), isolate(study_id()), isolate(proj_id()))
     })
 

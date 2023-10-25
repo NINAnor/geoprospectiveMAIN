@@ -46,7 +46,7 @@ mod_delphi_round1_ui <- function(id){
 
       conditionalPanel(
         condition = "input.expert_map != ''", ns=ns,
-        actionButton(ns("confirm"), "Next task", class='btn-primary')
+        # actionButton(ns("confirm"), "Next task", class='btn-primary')
       )
     )
   )
@@ -61,7 +61,7 @@ callback <- c(
 #' delphi_round1 Server Functions
 #'
 #' @noRd
-mod_delphi_round1_server <- function(id, ee_stud_geom, sf_stud_geom, comb, rand_es_sel, userID, study_id, proj_id){
+mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geom, comb, rand_es_sel, userID, study_id, proj_id){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
@@ -130,9 +130,9 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, sf_stud_geom, comb, rand_
                      singleFeature = FALSE,
                      editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions()))
 
-    observeEvent(input$confirm,{
-      rv1$u <-reactive({1})
-    })
+    # observeEvent(input$confirm,{
+    #   rv1$u <-reactive({1})
+    # })
 
     rv<-reactiveValues(
       edits = reactive({})
@@ -570,7 +570,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, sf_stud_geom, comb, rand_
 
         ############ save map
         incProgress(amount = 0.2,message = "store your map")
-        # img_assetid <- paste0(ee_get_assethome(), '/R_1/ind_maps/',"1_",userID,"_",esID,"_", siteID)
+        img_assetid <- paste0("projects/pareus/assets/geopros_dev/ind_img1/",userID,"_",rand_es_sel$esID,"_", study_id)
 
         #set features of img
         prediction <- prediction$set('esID', rand_es_sel$esID,
@@ -579,15 +579,15 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, sf_stud_geom, comb, rand_
                                      'projID', proj_id,
                                      'delphi_round', 1)
 
-        # start_time<-Sys.time()
-        # task_img <- ee_image_to_asset(
-        #   image = prediction,
-        #   assetId = img_assetid,
-        #   overwrite = T,
-        #   region = geometry
-        # )
-        #
-        # task_img$start()
+        start_time<-Sys.time()
+        task_img <- ee_image_to_asset(
+          image = prediction,
+          assetId = img_assetid,
+          overwrite = T,
+          region = ee_bbox_geom
+        )
+
+        task_img$start()
 
 
         ############ prepare map
