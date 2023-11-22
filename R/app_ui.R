@@ -15,7 +15,7 @@ app_ui <- function(request) {
                   tabPanel(title = "Load study", value = "p0",
                            h5("Please provide your study id that you received from the admin"),
                            br(),
-                           textInput("study_id","study id"),
+                           textInput("site_id","Enter the site id from your invitation"),
                            actionButton("sub0","submit")
                   ),
                   tabPanel(title = "user contact", value = "p1",

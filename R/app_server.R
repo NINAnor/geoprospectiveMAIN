@@ -10,12 +10,26 @@
 #' @import leaflet
 #' @import leaflet.extras
 #' @import mapedit
+#' @import bigrquery
 #' @noRd
 #'
+bq_auth(
+  path = "C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/WENDY/eu-wendy-92974cdf189d.json"
+)
 
+
+bq_auth(path = "C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/WENDY/eu-wendy-92974cdf189d.json")
+con <- dbConnect(
+  bigrquery::bigquery(),
+  project = "eu-wendy",
+  dataset = "integrated_wendy",
+  billing = "eu-wendy"
+)
+study_site<-tbl(con, "study_site")
+studies<-study_site%>%select(siteID)%>%collect()
 
 app_server <- function(input, output, session) {
-  studies<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/study_geom.rds")
+  # studies<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/study_geom.rds")
 
   hideTab(inputId = "inTabset", target = "p1")
   hideTab(inputId = "inTabset", target = "p2")
@@ -29,7 +43,7 @@ app_server <- function(input, output, session) {
   # hideTab(inputId = "inTabset", target = "p2")
 
   observeEvent(input$sub0,{
-    if(input$study_id %in% studies$studyID){
+    if(input$site_id %in% studies$siteID){
       # rgee::ee_Initialize()
       # rgee::ee_install_set_pyenv("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
       # reticulate::use_python("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
@@ -50,42 +64,48 @@ app_server <- function(input, output, session) {
     }
   })
 
-  study_id<-eventReactive(input$sub0,{
-    if(input$study_id %in% studies$studyID){
-      study_id<-as.character(studies%>%filter(studyID==input$study_id)%>%select(studyID))
+  site_id<-eventReactive(input$sub0,{
+    if(input$site_id  %in% studies$siteID){
+      site_id<-as.character(studies%>%filter(studyID==input$site_id)%>%select(siteID))
 
     }else{
       study_id<-NULL
     }
 
   })
-  proj_id<-eventReactive(input$sub0,{
-    if(input$study_id %in% studies$studyID){
-      proj_id<-as.character(studies%>%filter(studyID==input$study_id)%>%select(projID))
+  # proj_id<-eventReactive(input$sub0,{
+  #   if(input$site_id %in% studies$siteID){
+  #     proj_id<-as.character(studies%>%filter(studyID==input$study_id)%>%select(projID))
+  #
+  #   }else{
+  #     proj_id<-NULL
+  #   }
+  #
+  # })
 
-    }else{
-      proj_id<-NULL
-    }
-
-  })
-
-  ee_stud_geom<-eventReactive(input$sub0,{
-    if(input$study_id %in% studies$studyID){
-      sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
-      ee_stud_geom <- sf_as_ee(x = sf_stud_geom)
-
-
-    }else{
-      ee_stud_geom<-NULL
-    }
-
-  })
+  # ee_stud_geom<-eventReactive(input$sub0,{
+  #   if(input$site_id %in% studies$siteID){
+  #     assetid <- paste0('eu-wendy/study_sites/', input$site_id)
+  #     sf_stud_geom<-ee_as_sf(assetid
+  #     )
+  #     sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
+  #     ee_stud_geom <- sf_as_ee(x = sf_stud_geom)
+  #
+  #
+  #   }else{
+  #     ee_stud_geom<-NULL
+  #   }
+  #
+  # })
 
 
 
   sf_stud_geom<-eventReactive(input$sub0,{
-    if(input$study_id %in% studies$studyID){
-      sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
+    if(input$site_id %in% studies$siteID){
+      # sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
+          assetid <- paste0('eu-wendy/study_sites/', input$site_id)
+          sf_stud_geom<-ee_as_sf(assetid
+          )
 
 
 
@@ -150,13 +170,10 @@ app_server <- function(input, output, session) {
 
 
   stud_es<-eventReactive(input$sub0,{
-    req(study_id)
-    req(proj_id)
-    study_id<-study_id()
-    proj_id<-proj_id()
-    if(input$study_id %in% studies$studyID){
-      stud_es<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/es.rds")%>%
-        filter(studyID == study_id & projID == proj_id)
+    req(site_id)
+    site_id<-site_id()
+    if(input$site_id %in% studies$siteID){
+      stud_es<-es_study%>%filter(siteID == site_id)%>%collect()
 
     }
 
