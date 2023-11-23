@@ -61,16 +61,19 @@ callback <- c(
 #' delphi_round1 Server Functions
 #'
 #' @noRd
-mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geom, comb, rand_es_sel, userID, study_id, proj_id){
+mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_es_sel, order, userID, site_id, table_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
-
+    rand_es_sel<-rand_es_sel[order,]
     ## the band names of the predictor variables (might be adjusted in the future if predictors can be selected according to project)
     # bands <- list("landcover","b1","nat")
     bands <- list("landcover")
     ### visualization parameter for img, mean
     cols   <- c("#e80909", "#fc8803", "#d8e03f", "#c4f25a","#81ab1f")
     maxentviz = list(bands= 'probability',min= 0, max= 1, palette= cols)
+    rv1<-reactiveValues(
+      u = reactive({})
+    )
 
     ## descriptives of ecosystem services
     output$title_es<-renderUI(h5(rand_es_sel$esNAME))
@@ -130,9 +133,9 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
                      singleFeature = FALSE,
                      editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions()))
 
-    # observeEvent(input$confirm,{
-    #   rv1$u <-reactive({1})
-    # })
+    observeEvent(input$confirm,{
+      rv1$u <-reactive({1})
+    })
 
     rv<-reactiveValues(
       edits = reactive({})
@@ -170,9 +173,8 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
         train_param<-list(
           esID = rand_es_sel$esID,
           userID = userID,
-          studyID = study_id,
-          projID = proj_id,
-          mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",study_id,"_",proj_id),
+          siteID = site_id,
+          mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",site_id),
           imp_acc= as.integer(0),
           imp_nat= as.integer(0),
           imp_lulc = as.integer(0),
@@ -189,7 +191,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
           extrap_natIMP = 0
         )
         train_param<-as.data.frame(train_param)
-        # insert_upload_job("rgee-381312", "data_base", "es_mappingR1", train_param)
+        insert_upload_job(table_con$project, table_con$dataset, "es_mappingR1", train_param)
         # removeUI(
         #   selector = paste0("#",ns("expert_map"))
         # )
@@ -198,7 +200,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
 
     })
 
-    ## remove mapping question as soon as decided
+    ##  check for intersecting polys
     observe({
       req(rv$edits)
       rectangles <- rv$edits()$finished
@@ -258,7 +260,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
 
     })
 
-    #remove ui
+    #remove mapping question as soon as decided
     observeEvent(input$map_poss,{
       if(input$map_poss !=""){
         removeUI(
@@ -363,7 +365,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
 
     ## blog description
     output$blogdescr<-renderUI({
-      h6(paste0("Please provide us a short explanation why you choosed these areas of good quality to provide ",rand_es_sel$esNAME))
+      h5(paste0("Please provide us a short explanation why you choosed these areas of good quality to provide ",rand_es_sel$esNAME))
     })
 
     ## remove map UI and sliders show result
@@ -428,8 +430,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
         polygon$es_value <- vecA
         polygon$esID <- rep(rand_es_sel$esID,nrow(polygon))
         polygon$userID <- rep(userID,nrow(polygon))
-        polygon$studyID <- rep(study_id,nrow(polygon))
-        polygon$projID <- rep(proj_id,nrow(polygon))
+        polygon$studyID <- rep(site_id,nrow(polygon))
         polygon$delphi_round<-rep(1, nrow(polygon))
 
         n_polys <-nrow(polygon)
@@ -443,7 +444,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
         poly_area<-as.numeric(sum(st_area(polygon)))
 
         # make ee object and save
-        gee_poly<-rgee::sf_as_ee(polygon, via = "getInfo")
+        # gee_poly<-rgee::sf_as_ee(polygon, via = "getInfo")
         #set features
         # gee_poly <- gee_poly$set('es_id', esID,
         #                          'userID', userID,
@@ -540,9 +541,8 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
           list(
             esID = rand_es_sel$esID,
             userID = userID,
-            studyID = study_id,
-            projID = proj_id,
-            mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",study_id,"_",proj_id),
+            siteID = site_id,
+            mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",site_id),
             imp_acc= as.integer(0),
             imp_nat= as.integer(0),
             imp_lulc = as.integer(0),
@@ -570,28 +570,27 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
 
         ############ save map
         incProgress(amount = 0.2,message = "store your map")
-        img_assetid <- paste0("projects/pareus/assets/geopros_dev/ind_img1/",userID,"_",rand_es_sel$esID,"_", study_id)
-
-        #set features of img
-        prediction <- prediction$set('esID', rand_es_sel$esID,
-                                     'userID', userID,
-                                     'studyID', study_id,
-                                     'projID', proj_id,
-                                     'delphi_round', 1)
-
-        start_time<-Sys.time()
-        task_img <- ee_image_to_asset(
-          image = prediction,
-          assetId = img_assetid,
-          overwrite = T,
-          region = ee_bbox_geom
-        )
-
-        task_img$start()
+        # img_assetid <- paste0("projects/pareus/assets/geopros_dev/ind_img1/",userID,"_",rand_es_sel$esID,"_", site_id)
+        #
+        # #set features of img
+        # prediction <- prediction$set('esID', rand_es_sel$esID,
+        #                              'userID', userID,
+        #                              'siteID', site_id,
+        #                              'delphi_round', 1)
+        #
+        # start_time<-Sys.time()
+        # task_img <- ee_image_to_asset(
+        #   image = prediction,
+        #   assetId = img_assetid,
+        #   overwrite = T,
+        #   region = ee_bbox_geom
+        # )
+        #
+        # task_img$start()
 
 
         ############ prepare map
-        incProgress(amount = 0.5,message = "prepare interactive map")
+        incProgress(amount = 0.1,message = "prepare interactive map")
         # Map$setCenter(10.38649, 63.40271,10)
 
         prediction<-Map$addLayer(
@@ -600,7 +599,7 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
           "Probability of ES",
           opacity = 0.4)
       })
-      return(prediction)
+      prediction<-prediction
 
     })
 
@@ -610,11 +609,21 @@ mod_delphi_round1_server <- function(id, ee_stud_geom, ee_bbox_geom, sf_stud_geo
         prediction()
       })
       # outputOptions(output, "gee_map", suspendWhenHidden = FALSE)
-
+      output$btn_cond<-renderUI({
+        req(prediction)
+        actionButton(ns("confirm2"), "Next task", class='btn-primary')
+      })
 
 
     })#/observe
+    #modify reactive value to trigger cond
+    observeEvent(input$confirm2,{
+      rv1$u <-reactive({1})
+    })
+    # play back the value of the confirm button to be used in the main app
+    cond <- reactive({rv1$u()})
 
+    return(cond)
   })
 }
 

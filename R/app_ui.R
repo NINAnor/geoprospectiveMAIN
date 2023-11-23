@@ -16,7 +16,8 @@ app_ui <- function(request) {
                            h5("Please provide your study id that you received from the admin"),
                            br(),
                            textInput("site_id","Enter the site id from your invitation"),
-                           actionButton("sub0","submit")
+                           # actionButton("sub0","submit")
+                           uiOutput("cond_0")
                   ),
                   tabPanel(title = "user contact", value = "p1",
                            h5("to contact you for round 2 please provide the e-mail adress"),
@@ -24,16 +25,20 @@ app_ui <- function(request) {
                            textInput("email","email"),
                            actionButton("sub1","start")
                   ),
-                  # tabPanel(title = "Questionnaire", value = "p2",
-                  #          mod_questionnaire_ui("questionnaire")),
-                  # tabPanel(title = "Your task", value = "p3",
-                  #          mod_training_ui("training_1")
-                  # ),
-                  # tabPanel(title = "Your task", value = "p3",
-                  #          mod_training_ui("training_1")
-
+                  tabPanel(title = "Questionnaire", value = "p2",
+                           mod_questionnaire_ui("questionnaire")),
+                  tabPanel(title = "Your task", value = "p3",
+                           mod_training_ui("training_1")
                   ),
-      uiOutput("dynamic_tabs")
+                  tabPanel(title = "ES mapping 1", value = "p4",
+                           mod_delphi_round1_ui("mapping_1")),
+                  tabPanel(title = "ES mapping 2", value = "p5",
+                           mod_delphi_round1_ui("mapping_2")),
+                  tabPanel(title = "ES mapping 3", value = "p6",
+                           mod_delphi_round1_ui("mapping_3")
+
+                  ))
+                  # uiOutput("dynamic_tabs")
 
     )
   )
