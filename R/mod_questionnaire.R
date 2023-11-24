@@ -114,8 +114,6 @@ mod_questionnaire_ui <- function(id){
 mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_type, table_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
-    #load quest
-    # quest<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/questionnaire.rds")
 
     rv1<-reactiveValues(
       u = reactive({})
@@ -173,13 +171,15 @@ mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_ty
       }
     })
 
-    map_liv<-eventReactive(input$liv_in_area,{
-      if(input$liv_in_area == "yes"){
-        grd<-st_make_grid(sf_stud_geom, cellsize = 0.02,
-                          offset = st_bbox(sf_stud_geom)[1:2],  what = "polygons")
+    grd<-eventReactive(input$liv_in_area,{
+      grd<-st_make_grid(sf_stud_geom, cellsize = 0.02,
+                        offset = st_bbox(sf_stud_geom)[1:2],  what = "polygons")
+    })
 
-      #cellsiz= c(diff(st_bbox(sf_stud_geom)[c(1, 3)]),
-        #diff(st_bbox(sf_stud_geom)[c(2,4)]))/10
+    map_liv<-eventReactive(input$liv_in_area,{
+      req(grd)
+      grd<-grd()
+      if(input$liv_in_area == "yes"){
 
         map_liv<- leaflet() %>%
           addProviderTiles(provider= "CartoDB.Positron")%>%
@@ -202,6 +202,7 @@ mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_ty
 
     observeEvent(input$sub_quest,{
       rv1$u <-reactive({1})
+      grd<-grd()
       if(site_type == "onshore"){
         liv_in_area <- input$liv_in_area
         if(input$liv_in_area == "yes"){

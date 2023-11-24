@@ -61,9 +61,11 @@ callback <- c(
 #' delphi_round1 Server Functions
 #'
 #' @noRd
-mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_es_sel, order, userID, site_id, table_con){
+mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order, userID, site_id, table_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+    mapTIME_start <-Sys.time()
+
     rand_es_sel<-rand_es_sel[order,]
     ## the band names of the predictor variables (might be adjusted in the future if predictors can be selected according to project)
     # bands <- list("landcover","b1","nat")
@@ -169,32 +171,35 @@ mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_
 
     ## if mapping not possible: (save results has to be added!)
     observeEvent(input$expert_map,{
+      mapTIME_end <-Sys.time()
       if(input$expert_map !=""){
         train_param<-list(
           esID = rand_es_sel$esID,
           userID = userID,
           siteID = site_id,
-          mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",site_id),
           imp_acc= as.integer(0),
           imp_nat= as.integer(0),
           imp_lulc = as.integer(0),
           imp_own = as.integer(input$imp_own),
           imp_other = as.integer(input$imp_other),
-          area = as.integer(0),
+          training_area = as.integer(0),
           n_poly = as.integer(0),
           blog = "NA",
-          mapping = "No",
+          poss_mapping = "No",
           expert_trust = input$expert_map,
+          mapping_order = order,
           extrap_RMSE = 0,
           extrap_accIMP = 0,
           extrap_lulcIMP = 0,
-          extrap_natIMP = 0
+          extrap_natIMP = 0,
+          mapTIME_start = mapTIME_start,
+          mapTIME_end = mapTIME_end
         )
         train_param<-as.data.frame(train_param)
         insert_upload_job(table_con$project, table_con$dataset, "es_mappingR1", train_param)
-        # removeUI(
-        #   selector = paste0("#",ns("expert_map"))
-        # )
+        removeUI(
+          selector = paste0("#",ns("expert_map"))
+        )
       }
 
 
@@ -368,6 +373,10 @@ mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_
       h5(paste0("Please provide us a short explanation why you choosed these areas of good quality to provide ",rand_es_sel$esNAME))
     })
 
+    ## keep mapping time
+    mapTIME_end <-eventReactive(input$submit,{
+      mapTIME_end <-Sys.time()
+    })
     ## remove map UI and sliders show result
     observeEvent(input$submit, {
 
@@ -409,6 +418,9 @@ mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_
 
     ### gather poly
     prediction<-eventReactive(input$submit, {
+      req(mapTIME_end)
+      mapTIME_end<-mapTIME_end()
+
       withProgress(message = "save your drawings",value = 0.1,{
         polygon<-rv$edits()$finished
         req(polygon, cancelOutput = FALSE)
@@ -542,21 +554,23 @@ mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_
             esID = rand_es_sel$esID,
             userID = userID,
             siteID = site_id,
-            mappingR1_UID = paste0(userID,"_",rand_es_sel$esID,"_",site_id),
             imp_acc= as.integer(0),
             imp_nat= as.integer(0),
             imp_lulc = as.integer(0),
             imp_own = as.integer(input$imp_own),
             imp_other = as.integer(input$imp_other),
-            area = as.integer(poly_area),
+            training_area = as.integer(poly_area),
             n_poly = as.integer(n_polys),
             blog = input$blog,
-            mapping = "Yes",
-            expert_trust = "no_expert",
+            poss_mapping = "Yes",
+            expert_trust = "no_own_mapping",
+            mapping_order = order,
             extrap_RMSE = 0,
             extrap_accIMP = 0,
             extrap_lulcIMP = 0,
-            extrap_natIMP = 0
+            extrap_natIMP = 0,
+            mapTIME_start = mapTIME_start,
+            mapTIME_end = mapTIME_end
 
           )
         train_param<-as.data.frame(train_param)
@@ -564,35 +578,44 @@ mod_delphi_round1_server <- function(id, ee_bbox_geom, sf_stud_geom, comb, rand_
         ############ maxent
         incProgress(amount = 0.1,message = "update data base")
         # write to bq
-        # insert_upload_job("rgee-381312", "data_base", "es_mappingR1", train_param)
+        insert_upload_job(table_con$project, table_con$dataset, "es_mappingR1", train_param)
+        # write.csv(train_param,"C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/mapping_R1.csv")
 
         prediction<-imageClassified$select("probability")
 
         ############ save map
         incProgress(amount = 0.2,message = "store your map")
-        # img_assetid <- paste0("projects/pareus/assets/geopros_dev/ind_img1/",userID,"_",rand_es_sel$esID,"_", site_id)
+        img_assetid <- "projects/eu-wendy/assets/es_mapping/es_map_ind/"
+        img_id<-paste0(img_assetid,site_id,"_",rand_es_sel$esID,"_",userID,"_1")
         #
         # #set features of img
-        # prediction <- prediction$set('esID', rand_es_sel$esID,
-        #                              'userID', userID,
-        #                              'siteID', site_id,
-        #                              'delphi_round', 1)
+        prediction <- prediction$set('esID', rand_es_sel$esID,
+                                     'userID', userID,
+                                     'siteID', site_id,
+                                     'delphi_round', 1,
+                                      'mapping_order', order)
         #
-        # start_time<-Sys.time()
-        # task_img <- ee_image_to_asset(
-        #   image = prediction,
-        #   assetId = img_assetid,
-        #   overwrite = T,
-        #   region = ee_bbox_geom
-        # )
-        #
-        # task_img$start()
+        # coords <- st_coordinates(sf_stud_geom)
+        # coords<-coords[,c(1,2)]
+        geometry <- ee$Geometry$Rectangle(
+          coords = c(7.98, 47.21487, 8.43017, 47.47055),
+          proj = "EPSG:4326",
+          geodesic = FALSE
+        )
+
+        task_img <- ee_image_to_asset(
+          image = prediction,
+          assetId = img_id,
+          overwrite = T,
+          region = geometry
+        )
+
+        task_img$start()
 
 
         ############ prepare map
         incProgress(amount = 0.1,message = "prepare interactive map")
-        # Map$setCenter(10.38649, 63.40271,10)
-
+        Map$setCenter(7.98, 47.21487,10)
         prediction<-Map$addLayer(
           eeObject = prediction,
           maxentviz,

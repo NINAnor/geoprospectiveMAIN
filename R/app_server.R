@@ -107,27 +107,24 @@ app_server <- function(input, output, session) {
           sf_stud_geom<-ee_as_sf(assetid)
   })
 
-  ee_bbox_geom<-eventReactive(input$sub0,{
-    req(sf_stud_geom)
-    sf_stud_geom<-sf_stud_geom()
-    bb_sf<-st_bbox(sf_stud_geom)
-
-    rlist <- list(xmin = as.numeric(bb_sf[1]), xmax = as.numeric(bb_sf[3]),ymin = as.numeric(bb_sf[2]), as.numeric(bb_sf[4]))
-    ROI <- c(rlist$xmin, rlist$ymin,
-             rlist$xmax, rlist$ymin,
-             rlist$xmax, rlist$ymax,
-             rlist$xmin, rlist$ymax,
-             rlist$xmin, rlist$ymin)
-    ee_bbox_geom <- matrix(ROI, ncol = 2, byrow = TRUE) %>%
-      list() %>%
-      st_polygon() %>%
-      st_sfc() %>%
-      st_set_crs(4326) %>%
-      sf_as_ee()
-  })
+  # ee_bbox_geom<-eventReactive(input$sub0,{
+  #   req(sf_stud_geom)
+  #   sf_stud_geom<-sf_stud_geom()
+  #   bb_sf<-st_bbox(sf_stud_geom)
+  #
+  #
+  #
+  #   ee_bbox_geom <- ee$Geometry$Rectangle(
+  #     coords = c(as.numeric(sf_stud_geom[1]), as.numeric(sf_stud_geom[2]), as.numeric(sf_stud_geom[3]), as.numeric(sf_stud_geom[4])),
+  #     proj = "EPSG:4326",
+  #     geodesic = FALSE
+  #   )
+  #
+  # })
 
   comb<-eventReactive(input$sub0,{
-    site_geom_ee<- paste0('eu-wendy/study_sites/', input$site_id)
+    site_geom_ee<- paste0('projects/eu-wendy/assets/study_sites/', input$site_id)
+    site_geom_ee <- ee$FeatureCollection(site_geom_ee)
     lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
     lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
     lulc<-lulc$clip(site_geom_ee)
@@ -209,7 +206,7 @@ app_server <- function(input, output, session) {
 
   observeEvent(rv$v(),{
     rand_es_sel<-stud_es()
-    ee_bbox_geom<-ee_bbox_geom()
+    # ee_bbox_geom<-ee_bbox_geom()
     sf_stud_geom<-sf_stud_geom()
     comb<-comb()
     userID<-userID()
@@ -221,7 +218,6 @@ app_server <- function(input, output, session) {
             target = "p3")
     showTab(inputId = "inTabset", target = "p4")
     rv$m1<-mod_delphi_round1_server("mapping_1",
-                                    ee_bbox_geom,
                                     sf_stud_geom,
                                     comb,rand_es_sel,1,
                                     userID,
@@ -236,7 +232,7 @@ app_server <- function(input, output, session) {
     hideTab(inputId = "inTabset",
             target = "p4")
     showTab(inputId = "inTabset", target = "p5")
-    rv$m2<-mod_delphi_round1_server("mapping_2",isolate(ee_bbox_geom()), isolate(sf_stud_geom()),
+    rv$m2<-mod_delphi_round1_server("mapping_2", isolate(sf_stud_geom()),
                                     isolate(comb()),rand_es_sel[2,],isolate(userID()), isolate(site_id()),
                                     isolate(site_type()), table_con)
   })
@@ -248,7 +244,7 @@ app_server <- function(input, output, session) {
     hideTab(inputId = "inTabset",
             target = "p5")
     showTab(inputId = "inTabset", target = "p6")
-    rv$m3<-mod_delphi_round1_server("mapping_3",isolate(ee_bbox_geom()), isolate(sf_stud_geom()),
+    rv$m3<-mod_delphi_round1_server("mapping_3", isolate(sf_stud_geom()),
                                     isolate(comb()),rand_es_sel[3,],isolate(userID()), isolate(site_id()),
                                     isolate(site_type()), table_con)
   })
