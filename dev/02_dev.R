@@ -23,7 +23,10 @@ attachment::att_amend_desc()
 golem::add_module(name = "questionnaire", with_test = TRUE) # Name of the module
 golem::add_module(name = "training", with_test = TRUE) # Name of the module
 golem::add_module(name = "delphi_round1", with_test = TRUE) # Name of the module
-golem::add_module(name = "delphi_round2", with_test = TRUE) # Name of the module
+# golem::add_module(name = "delphi_round2", with_test = TRUE) # Name of the module
+golem::add_module(name = "ahp_group", with_test = TRUE) # Name of the module
+golem::add_module(name = "ahp_single", with_test = TRUE) # Name of the module
+golem::add_module(name = "dist_impact", with_test = TRUE) # Name of the module
 
 ## Add helper functions ----
 ## Creates fct_* and utils_*
