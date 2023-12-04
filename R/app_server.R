@@ -3,6 +3,7 @@
 #' @param input,output,session Internal parameters for {shiny}.
 #'     DO NOT REMOVE.
 #' @import shiny
+#' @import shinyjs
 #' @import dplyr
 #' @import sf
 #' @import stringi
@@ -43,27 +44,18 @@ con <- dbConnect(
 study_site<-tbl(con, "study_site")
 studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING)%>%collect()
 
-
-
 app_server <- function(input, output, session) {
   # studies<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/study_geom.rds")
 
   hideTab(inputId = "inTabset", target = "p1")
   hideTab(inputId = "inTabset", target = "p2")
   hideTab(inputId = "inTabset", target = "p3")
-  hideTab(inputId = "inTabset", target = "p4")
-  hideTab(inputId = "inTabset", target = "p5")
-  hideTab(inputId = "inTabset", target = "p6")
 
   rv<-reactiveValues(
     u = reactive({}),
     v = reactive({}),
-    w = reactive({}),
-    m1 = reactive({}),
-    m2 = reactive({}),
-    m3 = reactive({})
+    w = reactive({})
   )
-  # hideTab(inputId = "inTabset", target = "p2")
 
   # validate site id
   observeEvent(input$site_id,{
@@ -157,7 +149,7 @@ app_server <- function(input, output, session) {
   num_tabs<-eventReactive(input$sub0,{
     req(site_id)
     site_id<-site_id()
-    num_tabs<-as.integer(studies%>%filter(siteID == site_id)%>%select(siteNMAPPING))
+    num_tabs<-as.numeric(studies%>%filter(siteID == site_id)%>%select(siteNMAPPING))
   })
 
   # email submitted
@@ -190,8 +182,6 @@ app_server <- function(input, output, session) {
 
   })
 
-
-
   # training module
   observeEvent(rv$u(),{
     # num_tabs<-num_tabs()
@@ -203,81 +193,75 @@ app_server <- function(input, output, session) {
     rv$v<-mod_training_server("training_1")
   })
 
+  #######################
+  ### create N tabs
 
   observeEvent(rv$v(),{
+    hideTab(inputId = "inTabset",
+            target = "p3")
+    num_tabs<-num_tabs()
+    output$tabs <- renderUI({
+      do.call(tabsetPanel, c(id="tabs_content",
+                             lapply(1:num_tabs, function(i) {
+                               tabPanel(title = paste("Mapping ", i), value = paste0("map_", i),
+                                        mod_delphi_round1_ui(paste0("mapping_",i)),
+
+                               )#/tabpanel
+                             })#/lapply
+      ))#/do.call
+    })#/UI render
+  })
+
+
+  ## hide tabs
+  observeEvent(input$tabs_content, {
+    num_tabs<-num_tabs()
     rand_es_sel<-stud_es()
-    # ee_bbox_geom<-ee_bbox_geom()
     sf_stud_geom<-sf_stud_geom()
     comb<-comb()
     userID<-userID()
     site_id<-site_id()
     site_type<-site_type()
-    updateTabsetPanel(session, "inTabset",
-                      selected = "p4")
-    hideTab(inputId = "inTabset",
-            target = "p3")
-    showTab(inputId = "inTabset", target = "p4")
-    rv$m1<-mod_delphi_round1_server("mapping_1",
-                                    sf_stud_geom,
-                                    comb,rand_es_sel,1,
-                                    userID,
-                                    site_id,
-                                    table_con)
-  })
 
-  observeEvent(rv$m1(),{
-    rand_es_sel<-stud_es()
-    updateTabsetPanel(session, "inTabset",
-                      selected = "p5")
-    hideTab(inputId = "inTabset",
-            target = "p4")
-    showTab(inputId = "inTabset", target = "p5")
-    rv$m2<-mod_delphi_round1_server("mapping_2", isolate(sf_stud_geom()),
-                                    isolate(comb()),rand_es_sel[2,],isolate(userID()), isolate(site_id()),
-                                    isolate(site_type()), table_con)
-  })
+    for (i in 2:num_tabs) {
+      runjs(paste("$('.nav-tabs li:nth-child(", i, ")').hide();"))
+    }
 
-  observeEvent(rv$m2(),{
-    rand_es_sel<-stud_es()
-    updateTabsetPanel(session, "inTabset",
-                      selected = "p6")
-    hideTab(inputId = "inTabset",
-            target = "p5")
-    showTab(inputId = "inTabset", target = "p6")
-    rv$m3<-mod_delphi_round1_server("mapping_3", isolate(sf_stud_geom()),
-                                    isolate(comb()),rand_es_sel[3,],isolate(userID()), isolate(site_id()),
-                                    isolate(site_type()), table_con)
-  })
+    lapply(1:num_tabs, function(i) {
+      rv<-reactiveValues(
+        a = reactive({})
+      )
 
+      rv$a<-mod_delphi_round1_server(paste0("mapping_",i),
+                                     sf_stud_geom,
+                                     comb,
+                                     rand_es_sel,
+                                     as.numeric(i),
+                                     userID,
+                                     site_id,
+                                     table_con)
+      #reactive value from module as event
+      observeEvent(rv$a(), {
+        next_tab <- i+1
+        runjs(paste("$('.nav-tabs li:nth-child(", next_tab, ")').show();"))
+        if(next_tab<=num_tabs){
+          updateTabsetPanel(session, "tabs_content", selected=paste0("map_",next_tab) )
+          runjs(paste("$('.nav-tabs li:nth-child(", i, ")').hide();"))
+        }else{
+          removeUI("#tabs")
+          output$final<-renderUI({
+            tagList(
+              "Thanks!"
+            )
+          })
+        }
 
-    # hideTab(inputId = "inTabset", target = "p3")
-    # appendTab("inTabset", tabPanel(1, tags$p(paste("I'm tab", 1))), select=TRUE,
-    #           rv$w<-mod_delphi_round1_server(paste0("delphi_round1_",i), isolate(ee_bbox_geom()), isolate(sf_stud_geom()),
-    #                                      isolate(comb()),rand_es_sel[i,],isolate(userID()), isolate(site_id()),
-    #                                      isolate(site_type()), table_con)
-    #           )
-    # output$dynamic_tabs <- renderUI({
-    #
-    #   do.call(tabsetPanel, c(id='inTab',lapply(1:num_tabs(), function(i) {
-    #     tabPanel(
-    #       paste("Tab", i),
-    #       h3(paste("This is content for Tab", i)),
-    #       mod_delphi_round1_ui(paste0("delphi_round1_",i))
-    #     )
-    #   })))
-    #
-    # })
-    # lapply(hideTab(inputId = "inTab", target = "p1"))
-    #
-    #
-    # lapply(1:num_tabs(), function(i) {
-    #   mod_delphi_round1_server(paste0("delphi_round1_",i), isolate(ee_bbox_geom()), isolate(sf_stud_geom()),
-    #                            isolate(comb()),rand_es_sel[i,],isolate(userID()), isolate(site_id()),
-    #                            isolate(site_type()), table_con)
-    # })
+      }, ignoreInit = TRUE, ignoreNULL = TRUE)
+    })
+  }, once = TRUE)
 
 
-
+  #######################
 
 
 }

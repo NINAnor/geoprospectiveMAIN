@@ -46,7 +46,7 @@ mod_delphi_round1_ui <- function(id){
 
       conditionalPanel(
         condition = "input.expert_map != ''", ns=ns,
-        # actionButton(ns("confirm"), "Next task", class='btn-primary')
+        actionButton(ns("confirm"), "Next task", class='btn-primary')
       )
     )
   )
@@ -65,7 +65,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
   moduleServer( id, function(input, output, session){
     ns <- session$ns
     mapTIME_start <-Sys.time()
-
+    order<-as.numeric(order)
     rand_es_sel<-rand_es_sel[order,]
     ## the band names of the predictor variables (might be adjusted in the future if predictors can be selected according to project)
     # bands <- list("landcover","b1","nat")
@@ -187,7 +187,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
           blog = "NA",
           poss_mapping = "No",
           expert_trust = input$expert_map,
-          mapping_order = order,
+          mapping_order = as.numeric(order),
           extrap_RMSE = 0,
           extrap_accIMP = 0,
           extrap_lulcIMP = 0,
@@ -564,7 +564,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
             blog = input$blog,
             poss_mapping = "Yes",
             expert_trust = "no_own_mapping",
-            mapping_order = order,
+            mapping_order = as.numeric(order),
             extrap_RMSE = 0,
             extrap_accIMP = 0,
             extrap_lulcIMP = 0,
@@ -586,7 +586,8 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         ############ save map
         incProgress(amount = 0.2,message = "store your map")
         img_assetid <- "projects/eu-wendy/assets/es_mapping/es_map_ind/"
-        img_id<-paste0(img_assetid,site_id,"_",rand_es_sel$esID,"_",userID,"_1")
+        # img_id<-paste0(img_assetid,"test")
+        img_id<-paste0(img_assetid, site_id,"_",rand_es_sel$esID,"_",userID,"_1")
         #
         # #set features of img
         prediction <- prediction$set('esID', rand_es_sel$esID,
@@ -595,10 +596,10 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
                                      'delphi_round', 1,
                                       'mapping_order', order)
         #
-        # coords <- st_coordinates(sf_stud_geom)
-        # coords<-coords[,c(1,2)]
+        coords <- st_coordinates(sf_stud_geom)
+        coords<-as.data.frame(coords[,c(1,2)])
         geometry <- ee$Geometry$Rectangle(
-          coords = c(7.98, 47.21487, 8.43017, 47.47055),
+          coords = c(min(coords$X), min(coords$Y), max(coords$X), max(coords$Y)),
           proj = "EPSG:4326",
           geodesic = FALSE
         )
@@ -615,7 +616,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
 
         ############ prepare map
         incProgress(amount = 0.1,message = "prepare interactive map")
-        Map$setCenter(7.98, 47.21487,10)
+        Map$setCenter(mean(coords$X), mean(coords$Y),10)
         prediction<-Map$addLayer(
           eeObject = prediction,
           maxentviz,

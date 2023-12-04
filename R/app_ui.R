@@ -10,6 +10,7 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
+      useShinyjs(),
       titlePanel(title =  div(img(src="logo.png", width ='120'), 'Geoprospective round 1'), windowTitle = "Geopros 1" ),
       tabsetPanel(id = "inTabset",
                   tabPanel(title = "Load study", value = "p0",
@@ -29,16 +30,18 @@ app_ui <- function(request) {
                            mod_questionnaire_ui("questionnaire")),
                   tabPanel(title = "Your task", value = "p3",
                            mod_training_ui("training_1")
-                  ),
-                  tabPanel(title = "ES mapping 1", value = "p4",
-                           mod_delphi_round1_ui("mapping_1")),
-                  tabPanel(title = "ES mapping 2", value = "p5",
-                           mod_delphi_round1_ui("mapping_2")),
-                  tabPanel(title = "ES mapping 3", value = "p6",
-                           mod_delphi_round1_ui("mapping_3")
+                  )
 
-                  ))
-                  # uiOutput("dynamic_tabs")
+                  # tabPanel(title = "ES mapping 1", value = "p4",
+                  #          mod_delphi_round1_ui("mapping_1")),
+                  # tabPanel(title = "ES mapping 2", value = "p5",
+                  #          mod_delphi_round1_ui("mapping_2")),
+                  # tabPanel(title = "ES mapping 3", value = "p6",
+                  #          mod_delphi_round1_ui("mapping_3")
+                  #   )
+                  ),
+                  uiOutput("tabs"),
+                  uiOutput("final")
 
     )
   )
