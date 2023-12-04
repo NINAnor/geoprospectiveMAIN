@@ -215,11 +215,14 @@ mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_ty
           user_lat <- st_coordinates(cent)[2]
           user_lng <- st_coordinates(cent)[1]
         }else{
-          length_liv<-NULL
-          user_lat <- NULL
-          user_lng <- NULL
+          length_liv <-"NO_LIVING"
+          user_lat <- 999
+          user_lng <- 999
         }}else{
         liv_in_area<- "offshore"
+        length_liv <-"NO_LIVING"
+        user_lat <- 999
+        user_lng <- 999
       }
 
 

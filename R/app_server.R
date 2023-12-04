@@ -21,6 +21,8 @@
 #' @import leaflet.extras2
 #' @import shinyWidgets
 #' @import tidyverse
+#' @import shinyBS
+#' @import shinyWidgets
 #' @noRd
 #'
 bq_auth(
@@ -44,6 +46,9 @@ con <- dbConnect(
 study_site<-tbl(con, "study_site")
 studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING)%>%collect()
 
+es_descr<-tbl(con,"es_descr")
+es_descr<-es_descr%>%collect()
+
 app_server <- function(input, output, session) {
   # studies<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/study_geom.rds")
 
@@ -54,7 +59,10 @@ app_server <- function(input, output, session) {
   rv<-reactiveValues(
     u = reactive({}),
     v = reactive({}),
-    w = reactive({})
+    w = reactive({}),
+    x = reactive({}),
+    y = reactive({}),
+    z = reactive({})
   )
 
   # validate site id
@@ -249,9 +257,9 @@ app_server <- function(input, output, session) {
           runjs(paste("$('.nav-tabs li:nth-child(", i, ")').hide();"))
         }else{
           removeUI("#tabs")
-          output$final<-renderUI({
+          output$ahp_group<-renderUI({
             tagList(
-              "Thanks!"
+              mod_ahp_group_ui("ahp_group_1")
             )
           })
         }
@@ -262,6 +270,39 @@ app_server <- function(input, output, session) {
 
 
   #######################
+  rv$x <- mod_ahp_group_server("ahp_group_1", isolate(userID()), isolate(site_id()), table_con)
 
+  observeEvent(rv$x(),{
+    removeUI("#ahp_group")
+    output$ahp_single<-renderUI({
+      tagList(
+        mod_ahp_single_ui("ahp_single_1")
+
+      )
+    })
+  })
+  rv$y <- mod_ahp_single_server("ahp_single_1", isolate(userID()), isolate(site_id()),es_descr, table_con)
+
+  observeEvent(rv$y(),{
+    removeUI("#ahp_single")
+    output$ahp_dist<-renderUI({
+      tagList(
+        mod_dist_impact_ui("dist_impact_1")
+      )
+    })
+
+  })
+  rv$z <- mod_dist_impact_server("dist_impact_1", isolate(userID()), isolate(site_id()), isolate(stud_es()), table_con)
+  #
+  #
+  observeEvent(rv$z(),{
+    removeUI("#ahp_dist")
+    output$final<-renderUI({
+      tagList(
+        h3("This is the end of the study, you can now close the browser. Thank you very much for your participation.")
+      )
+    })
+
+  })
 
 }
