@@ -456,7 +456,16 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         poly_area<-as.numeric(sum(st_area(polygon)))
 
         # make ee object and save
-        # gee_poly<-rgee::sf_as_ee(polygon, via = "getInfo")
+        gee_poly<-rgee::sf_as_ee(polygon, via = "getInfo")
+        assetId<-paste0("projects/eu-wendy/assets/es_poly_ind/",as.character(site_id),"_",as.character(rand_es_sel$esID),"_",userID,"_1")
+        start_time<-Sys.time()
+        task_tab <- ee_table_to_asset(
+          collection = gee_poly,
+          description = "test upload ind_area",
+          assetId = assetId
+        )
+
+        task_tab$start()
         #set features
         # gee_poly <- gee_poly$set('es_id', esID,
         #                          'userID', userID,
