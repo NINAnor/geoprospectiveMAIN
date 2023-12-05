@@ -44,7 +44,7 @@ con <- dbConnect(
   billing = table_con$billing
 )
 study_site<-tbl(con, "study_site")
-studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING)%>%collect()
+studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS)%>%collect()
 
 es_descr<-tbl(con,"es_descr")
 es_descr<-es_descr%>%collect()
@@ -67,13 +67,13 @@ app_server <- function(input, output, session) {
 
   # validate site id
   observeEvent(input$site_id,{
-    if(input$site_id %in% studies$siteID){
+    if(input$site_id %in% studies$siteID & studies$siteSTATUS == "created_avtive"){
       output$cond_0<-renderUI(
         actionButton("sub0","load site")
       )
     }else{
       output$cond_0<-renderUI(
-        h5("invalid id")
+        h5("invalid id or study not active, contact the administrator")
       )
     }
   })
