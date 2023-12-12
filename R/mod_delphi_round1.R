@@ -144,6 +144,8 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
     )
 
     ## call the edit map module from the mapedit package
+    # edits<-mapedit::editMap(map, targetLayerId = "poly_r1", record = T,sf = T,editor = c("leaflet.extras", "leafpm"))
+
     observeEvent(input$map_poss,{
       if(input$map_poss == "Yes"){
 
@@ -205,11 +207,16 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
 
     })
 
-    ##  check for intersecting polys
+    ##  check for intersecting training / study area and poly areas in general
     observe({
       req(rv$edits)
       rectangles <- rv$edits()$finished
+
       n_poly<-nrow(as.data.frame(rectangles))
+
+      #with res of 250m grid we can sample at least 10 pts with variaton within 0.6km2
+      A_min<-250*250*sqrt(10)
+      A_max<-0.05*round(as.numeric(st_area(sf_stud_geom)),0)
 
       if(n_poly==1){
         n_within<-nrow(as.data.frame(st_within(rectangles,sf_stud_geom)))
@@ -220,12 +227,34 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
           removeUI(
             selector = paste0("#",ns("savepoly")))
         }else{
-          output$btn1<-renderUI(
-            actionButton(ns("savepoly"),"save")
-          )
-          output$overlay_result <- renderText({
-            "Save or draw further polygons"
-          })
+          area<-round(as.numeric(st_area(rectangles)),0)
+          min_train<-min(area)
+          max_train<-max(area)
+          if(min_train<A_min & max_train<=A_max){
+            output$overlay_result <- renderText({
+              paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>The area of the polygon is too small<li/></font>")
+            })
+            removeUI(
+              selector = paste0("#",ns("savepoly")))
+
+          }else if(min_train>A_min & max_train>A_max){
+            output$overlay_result <- renderText({
+              paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>The area of the polygon is too big<li/></font>")
+            })
+            removeUI(
+              selector = paste0("#",ns("savepoly")))
+
+
+          }else{
+            output$btn1<-renderUI(
+              actionButton(ns("savepoly"),"save")
+            )
+            output$overlay_result <- renderText({
+              "Save or draw further polygons"
+            })
+
+          }
+
         }
 
       }else if (n_poly>1){
@@ -236,30 +265,51 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
           removeUI(
             selector = paste0("#",ns("savepoly")))
           output$overlay_result <- renderText({
-            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b><li>Place your polygon completely into the the study area<li/><li>Remove overlays<li/></font>")
+            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b><li>Place your last polygon completely into the the study area<li/><li>Remove overlays<li/></font>")
 
           })
         }else if(q==0 & n_within<n_poly){
           removeUI(
             selector = paste0("#",ns("savepoly")))
           output$overlay_result <- renderText({
-            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>Place your polygon completely into the the study area<li/></font>")
+            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>Place your last polygon completely into the the study area<li/></font>")
 
           })
         }else if(q!=0 & n_within==n_poly){
           removeUI(
             selector = paste0("#",ns("savepoly")))
           output$overlay_result <- renderText({
-            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>Remove overlays<li/></font>")
+            paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>Remove overlays from last polygon<li/></font>")
 
           })
         }else if(q==0 & n_within==n_poly){
-          output$btn1<-renderUI(
-            actionButton(ns("savepoly"),"save")
-          )
-          output$overlay_result <- renderText({
-            "Save or draw further polygons"
-          })
+          area<-round(as.numeric(st_area(rectangles)),0)
+          min_train<-min(area)
+          max_train<-max(area)
+          if(min_train<A_min & max_train<=A_max){
+            output$overlay_result <- renderText({
+              paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>The area of the last polygon was too small<li/></font>")
+            })
+            removeUI(
+              selector = paste0("#",ns("savepoly")))
+
+          }else if(min_train>A_min & max_train>A_max){
+            output$overlay_result <- renderText({
+              paste("<font color=\"#FF0000\"><b>","You can`t save the polygons:","</b> <li>The area of the last polygon was too big<li/></font>")
+            })
+            removeUI(
+              selector = paste0("#",ns("savepoly")))
+
+
+          }else{
+            output$btn1<-renderUI(
+              actionButton(ns("savepoly"),"save")
+            )
+            output$overlay_result <- renderText({
+              "Save or draw further polygons"
+            })
+
+          }
         }
       }
 
@@ -448,12 +498,8 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         n_polys <-nrow(polygon)
         polygon<-st_as_sf(polygon)
 
-        ## save as shp (up to now) ############### adjust this
-        # polypath <- paste0( 'C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/WENDY/PGIS_ES/data_base/poly_R1/',userID,"_",esID,"_",siteID,".shp")
-        ## save poly
-        # st_write(polygon,polypath)
 
-        poly_area<-as.numeric(sum(st_area(polygon)))
+        train_area<-as.numeric(sum(st_area(polygon)))
 
         # make ee object and save
         gee_poly<-rgee::sf_as_ee(polygon, via = "getInfo")
@@ -477,42 +523,21 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         ############ training pts
         incProgress(amount = 0.2,message = "prepare training data")
 
-
+        #cellsize
+        resolution<-250*250
 
         ## N background (outside poly points) according to area of extrapolation
         A_roi<-as.numeric(st_area(sf_stud_geom))
-        # area of smallest poly
-        A_min<-as.numeric(min(st_area(polygon)))
-        # area of largest poly
-        A_max<-as.numeric(max(st_area(polygon)))
 
         # max pts for efficient extrapolation each 250x250 cell
-        max_pts<- round(A_roi/(300*300),0)
-
-
-        # ratio poly area vs whole area
-        ratio_A<-poly_area/A_roi
+        all_back_pts<- round(A_roi/resolution,0)
 
         ## although zooming on the map while drawing is limited, we assure that at least 10pts are within a poly
         min_in_pts<-10
-        abs_min_res<-100
-        min_in_eff_pts<-(sqrt(A_min)/abs_min_res)^2
 
+        pts_out = st_sample(sf_stud_geom, all_back_pts,type="random")
 
-        if(min_in_eff_pts<min_in_pts){
-          pts_min <- min_in_pts
-        } else {
-          pts_min <- min_in_eff_pts
-        }
-
-        # amount of background pts
-        pts_out<-round(1/ratio_A*pts_min,0)
-
-        # sample backgraound pts
-        # pts_out = st_sample(sf_bound, pts_out,type="random")
-        pts_out = st_sample(sf_stud_geom, max_pts,type="random")
-
-        # don`t allow intersection with polygons
+       # don`t allow intersection with polygons
         pts_out <- st_difference(st_combine(pts_out), st_combine(polygon)) %>% st_cast('POINT')
         pts_out<-st_as_sf(pts_out)
         pts_out$inside<-rep(0,nrow(pts_out))
@@ -521,11 +546,16 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         # inside pts are area + es value weighted
         for (i in 1:nrow(polygon)) {
           A_tmp <- as.numeric(st_area(polygon[i,]))
-          #tmp_ratio<-A_tmp/A_min
           tmp_ratio<-A_tmp/A_roi
+          tmp_pts<-round(all_back_pts*tmp_ratio,0)
+
+          if(tmp_pts<=min_in_pts){
+            tmp_pts<-min_in_pts
+          }else{
+            tmp_pts<-tmp_pts
+          }
           # npts in this poly must be max_pts*tmp_ratio*es_value
-          #tmp_pts = st_sample(polygon[i,], round(tmp_ratio*pts_min,0)*polygon[i,]$es_value,type="random")
-          tmp_pts = st_sample(polygon[i,], round(max_pts*tmp_ratio,0)*polygon[i,]$es_value,type="random")
+          tmp_pts = st_sample(polygon[i,], tmp_pts*polygon[i,]$es_value,type="random")
           tmp_pts<-st_as_sf(tmp_pts)
           tmp_pts$inside<-rep(1,nrow(tmp_pts))
           if(i==1){
@@ -568,7 +598,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
             imp_lulc = as.integer(0),
             imp_own = as.integer(input$imp_own),
             imp_other = as.integer(input$imp_other),
-            training_area = as.integer(poly_area),
+            training_area = as.integer(sum(st_area(polygon))),
             n_poly = as.integer(n_polys),
             blog = input$blog,
             poss_mapping = "Yes",
@@ -595,7 +625,6 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order,
         ############ save map
         incProgress(amount = 0.2,message = "store your map")
         img_assetid <- "projects/eu-wendy/assets/es_mapping/es_map_ind/"
-        # img_id<-paste0(img_assetid,"test")
         img_id<-paste0(img_assetid, site_id,"_",rand_es_sel$esID,"_",userID,"_1")
         #
         # #set features of img
