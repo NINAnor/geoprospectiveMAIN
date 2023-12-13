@@ -11,7 +11,7 @@ app_ui <- function(request) {
     # Your application UI logic
     fluidPage(
       useShinyjs(),
-      titlePanel(title =  div(img(src="logo.png", width ='120'), 'Geoprospective round 1'), windowTitle = "Geopros 1" ),
+      titlePanel(title =  div(img(src="www/wendy_logo.png", width ='120'), 'Geoprospective round 1'), windowTitle = "Geopros 1" ),
       tabsetPanel(id = "inTabset",
                   tabPanel(title = "Load study", value = "p0",
                            h5("Please provide your study id that you received from the admin"),
@@ -24,7 +24,7 @@ app_ui <- function(request) {
                            h5("to contact you for round 2 please provide the e-mail address"),
                            br(),
                            textInput("email","email"),
-                           actionButton("sub1","start")
+                           uiOutput("cond_1")
                   ),
                   tabPanel(title = "Questionnaire", value = "p2",
                            mod_questionnaire_ui("questionnaire")),

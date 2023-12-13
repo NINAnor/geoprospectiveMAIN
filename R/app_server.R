@@ -44,7 +44,10 @@ con <- dbConnect(
   billing = table_con$billing
 )
 study_site<-tbl(con, "study_site")
-studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS)%>%collect()
+studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS,siteCREATETIME)%>%collect()
+studies$siteCREATETIME<-as.POSIXct(studies$siteCREATETIME)
+studies<-studies%>%filter(siteCREATETIME == max(siteCREATETIME))
+studies<-studies[1,]
 
 es_descr<-tbl(con,"es_descr")
 es_descr<-es_descr%>%collect()
@@ -67,7 +70,7 @@ app_server <- function(input, output, session) {
 
   # validate site id
   observeEvent(input$site_id,{
-    if(input$site_id %in% studies$siteID & studies$siteSTATUS == "created_avtive"){
+    if(input$site_id %in% studies$siteID & studies$siteSTATUS == "round1_open"){
       output$cond_0<-renderUI(
         actionButton("sub0","load site")
       )
@@ -80,10 +83,7 @@ app_server <- function(input, output, session) {
 
   #switch tab 1
   observeEvent(input$sub0,{
-      # rgee::ee_Initialize()
-      # rgee::ee_install_set_pyenv("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
-      # reticulate::use_python("C:/Users/reto.spielhofer/AppData/Local/r-miniconda/envs/rgee/python.exe")
-      rgee::ee_Initialize(user = 'reto.spielhofer@nina.no')
+     rgee::ee_Initialize(user = 'reto.spielhofer@nina.no')
 
       updateTabsetPanel(session, "inTabset",
                         selected = "p1")
@@ -163,6 +163,25 @@ app_server <- function(input, output, session) {
   # email submitted
   userID<-eventReactive(input$sub1,{
     userID<-stri_rand_strings(1, 10, pattern = "[A-Za-z0-9]")
+  })
+
+  observeEvent(input$email,{
+    req(site_id)
+    site_id<-site_id()
+    userR1<-tbl(con, "es_mappingR1")
+    user_conf<-tbl(con, "user_conf")
+    userR1<-left_join(userR1,user_conf,by="userID")%>%collect()
+    userR1<- userR1%>%select(userMAIL,siteID)%>%filter(siteID == input$site_id)
+
+    if(input$email %in% userR1$userMAIL){
+      output$cond_1<-renderUI({
+        h5("email for this study already present")
+      })
+    }else{
+      output$cond_1<-renderUI({
+        actionButton("sub1","start")
+      })
+    }
   })
 
   #questionnaire module and safe conf user
