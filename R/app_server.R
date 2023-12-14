@@ -43,17 +43,11 @@ con <- dbConnect(
   dataset = table_con$dataset,
   billing = table_con$billing
 )
-study_site<-tbl(con, "study_site")
-studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS,siteCREATETIME)%>%collect()
-studies$siteCREATETIME<-as.POSIXct(studies$siteCREATETIME)
-studies<-studies%>%filter(siteCREATETIME == max(siteCREATETIME))
-studies<-studies[1,]
 
 es_descr<-tbl(con,"es_descr")
 es_descr<-es_descr%>%collect()
 
 app_server <- function(input, output, session) {
-  # studies<-readRDS("C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/admin_app/study_geom/study_geom.rds")
 
   hideTab(inputId = "inTabset", target = "p1")
   hideTab(inputId = "inTabset", target = "p2")
@@ -67,9 +61,18 @@ app_server <- function(input, output, session) {
     y = reactive({}),
     z = reactive({})
   )
+  studies<-eventReactive(input$site_id,{
+    study_site<-tbl(con, "study_site")
+    studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS,siteCREATETIME)%>%collect()
+
+  })
 
   # validate site id
   observeEvent(input$site_id,{
+    req(studies)
+    studies<-studies()
+    studies<-studies%>%filter(siteID == input$site_id)%>%
+      arrange(desc(as.POSIXct(siteCREATETIME)))%>%first()
     if(input$site_id %in% studies$siteID & studies$siteSTATUS == "round1_open"){
       output$cond_0<-renderUI(
         actionButton("sub0","load site")
@@ -92,57 +95,57 @@ app_server <- function(input, output, session) {
       showTab(inputId = "inTabset", target = "p1")
   })
 
+  ## extracte site_id
   site_id<-eventReactive(input$sub0,{
-      site_id<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteID))
+    req(studies)
+    studies<-studies()
+      site_id<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteID)%>%first())
   })
 
+  ##extract site_type
   site_type<-eventReactive(input$sub0,{
-    site_type<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteTYPE))
+    req(studies)
+    studies<-studies()
+    site_type<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteTYPE)%>%first())
   })
 
+  ## extract study geometry
   sf_stud_geom<-eventReactive(input$sub0,{
-      # sf_stud_geom<-st_as_sf(studies%>%filter(studyID==input$study_id)%>%select(geometry))
           assetid <- paste0('projects/eu-wendy/assets/study_sites/', input$site_id)
           assetid <- ee$FeatureCollection(assetid)
           sf_stud_geom<-ee_as_sf(assetid)
   })
 
-  # ee_bbox_geom<-eventReactive(input$sub0,{
-  #   req(sf_stud_geom)
-  #   sf_stud_geom<-sf_stud_geom()
-  #   bb_sf<-st_bbox(sf_stud_geom)
-  #
-  #
-  #
-  #   ee_bbox_geom <- ee$Geometry$Rectangle(
-  #     coords = c(as.numeric(sf_stud_geom[1]), as.numeric(sf_stud_geom[2]), as.numeric(sf_stud_geom[3]), as.numeric(sf_stud_geom[4])),
-  #     proj = "EPSG:4326",
-  #     geodesic = FALSE
-  #   )
-  #
-  # })
-
+  ## predictor variables dep on/offshore
   comb<-eventReactive(input$sub0,{
+    req(site_type)
+    site_type<-site_type()
+
     site_geom_ee<- paste0('projects/eu-wendy/assets/study_sites/', input$site_id)
     site_geom_ee <- ee$FeatureCollection(site_geom_ee)
-    lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
-    lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-    lulc<-lulc$clip(site_geom_ee)
+    if(site_type == "onshore"){
+      lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
+      lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
+      lulc<-lulc$clip(site_geom_ee)
 
-#
-#     acc_pat<-paste0(ee_get_assethome(), '/acc_old')
-#     acc<-ee$Image(acc_pat)
-#     acc<-acc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-#
-#     nat_pat<-paste0(ee_get_assethome(), '/natu')
-#     nat<-ee$Image(nat_pat)
-#     nat<-nat$clip(ee_stud_geom)
-#     nat<-nat$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-#     nat<-nat$rename("nat")
+      #
+      #     acc_pat<-paste0(ee_get_assethome(), '/acc_old')
+      #     acc<-ee$Image(acc_pat)
+      #     acc<-acc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
+      #
+      #     nat_pat<-paste0(ee_get_assethome(), '/natu')
+      #     nat<-ee$Image(nat_pat)
+      #     nat<-nat$clip(ee_stud_geom)
+      #     nat<-nat$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
+      #     nat<-nat$rename("nat")
 
-    # combine unique class count wdw and lulc
-    # comb<-ee$Image$cat(lulc,acc, nat)
-    comb<-ee$Image$cat(lulc)
+      # combine unique class count wdw and lulc
+      # comb<-ee$Image$cat(lulc,acc, nat)
+      comb<-ee$Image$cat(lulc)
+    }else{
+
+    }
+
 
   })
 
@@ -157,12 +160,14 @@ app_server <- function(input, output, session) {
   num_tabs<-eventReactive(input$sub0,{
     req(site_id)
     site_id<-site_id()
+    studies<-studies()
     num_tabs<-as.numeric(studies%>%filter(siteID == site_id)%>%select(siteNMAPPING))
   })
 
   # email submitted
   userID<-eventReactive(input$sub1,{
-    userID<-stri_rand_strings(1, 10, pattern = "[A-Za-z0-9]")
+    nchar<-round(runif(1,8,13),0)
+    userID<-stri_rand_strings(1, nchar, pattern = "[A-Za-z0-9]")
   })
 
   observeEvent(input$email,{
@@ -231,7 +236,7 @@ app_server <- function(input, output, session) {
       do.call(tabsetPanel, c(id="tabs_content",
                              lapply(1:num_tabs, function(i) {
                                tabPanel(title = paste("Mapping ", i), value = paste0("map_", i),
-                                        mod_delphi_round1_ui(paste0("mapping_",i)),
+                                        mod_delphi_round1_ui(paste0("mapping_",i))
 
                                )#/tabpanel
                              })#/lapply
