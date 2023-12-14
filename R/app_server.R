@@ -120,30 +120,69 @@ app_server <- function(input, output, session) {
   comb<-eventReactive(input$sub0,{
     req(site_type)
     site_type<-site_type()
-
     site_geom_ee<- paste0('projects/eu-wendy/assets/study_sites/', input$site_id)
     site_geom_ee <- ee$FeatureCollection(site_geom_ee)
     if(site_type == "onshore"){
-      lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
-      lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-      lulc<-lulc$clip(site_geom_ee)
+      # landcover
+      on_lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
+      on_lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
+      on_lulc<-lulc$clip(site_geom_ee)$rename("on_lulc")
 
-      #
-      #     acc_pat<-paste0(ee_get_assethome(), '/acc_old')
-      #     acc<-ee$Image(acc_pat)
-      #     acc<-acc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-      #
-      #     nat_pat<-paste0(ee_get_assethome(), '/natu')
-      #     nat<-ee$Image(nat_pat)
-      #     nat<-nat$clip(ee_stud_geom)
-      #     nat<-nat$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-      #     nat<-nat$rename("nat")
+      #Hill et al., 2022: ecosystem integrity (structure, composition, and function against current actual potential as baseline) (0-1)
+      on_int<-"projects/eu-wendy/assets/ON_INT"
+      on_int<-ee$Image(on_int)
+      on_int<-on_int$clip(site_geom_ee)
+      on_int<-on_int$resample("bilinear")$reproject(crs= "EPSG:4326")
+      on_int<-on_int$rename("on_int")
 
-      # combine unique class count wdw and lulc
-      # comb<-ee$Image$cat(lulc,acc, nat)
-      comb<-ee$Image$cat(lulc)
+      # global friction surface (land-based accessibility using motorized vehicles)
+      on_acc = ee$Image('Oxford/MAP/friction_surface_2019')$select("friction")
+      on_acc<-on_acc$resample("bilinear")$reproject(crs= "EPSG:4326")
+      on_acc<-on_acc$clip(site_geom_ee)$rename("on_acc")
+
+      comb<-ee$Image$cat(on_lulc,on_int,on_acc)
     }else{
 
+      #bathymetry
+      off_bat = ee$Image('NOAA/NGDC/ETOPO1')$select('bedrock')
+      off_bat<-off_bat$resample("bilinear")$reproject(crs= "EPSG:4326")
+      off_bat<-off_bat$clip(site_geom_ee)
+
+      ## lulc sea
+      off_lulc<-"projects/eu-wendy/assets/OFF_LULC"
+      off_lulc<-ee$Image(off_lulc)
+      off_lulc<-es_int$clip(site_geom_ee)
+      off_lulc<-es_int$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
+      off_lulc<-es_int$rename("off_lulc")
+
+      # dist coast
+      off_acc<-"projects/eu-wendy/assets/OFF_ACC"
+      off_acc<-ee$Image(off_acc)
+      off_acc<-es_int$clip(site_geom_ee)
+      off_acc<-off_acc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
+      off_acc<-off_acc$rename("off_acc")
+
+      #Human Impacts to Marine Ecosystems
+      off_nat<-"projects/eu-wendy/assets/OFF_NAT"
+      off_nat<-ee$Image(off_nat)
+      off_nat<-off_nat$clip(site_geom_ee)
+      off_nat<-off_nat$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
+      off_nat<-off_nat$rename("off_nat")
+
+      comb<-ee$Image$cat(off_bat,off_lulc,off_acc,off_nat)
+    }
+
+
+  })
+
+  bands<-eventReactive(input$sub0,{
+    req(site_type)
+    site_type<-site_type()
+
+    if(site_type == "onshore"){
+      bands<-list("on_lulc","on_int","on_acc")
+    }else{
+      bands<-list("off_bat","off_lulc","off_ac","off_nat")
     }
 
 
@@ -253,7 +292,7 @@ app_server <- function(input, output, session) {
     comb<-comb()
     userID<-userID()
     site_id<-site_id()
-    site_type<-site_type()
+    bands<-bands()
 
     for (i in 2:num_tabs) {
       runjs(paste("$('.nav-tabs li:nth-child(", i, ")').hide();"))
@@ -267,6 +306,7 @@ app_server <- function(input, output, session) {
       rv$a<-mod_delphi_round1_server(paste0("mapping_",i),
                                      sf_stud_geom,
                                      comb,
+                                     bands,
                                      rand_es_sel,
                                      as.numeric(i),
                                      userID,

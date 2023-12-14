@@ -61,15 +61,14 @@ callback <- c(
 #' delphi_round1 Server Functions
 #'
 #' @noRd
-mod_delphi_round1_server <- function(id, sf_stud_geom, comb, rand_es_sel, order, userID, site_id, table_con){
+mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel, order, userID, site_id, table_con){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
     mapTIME_start <-Sys.time()
     order<-as.numeric(order)
     rand_es_sel<-rand_es_sel[order,]
     ## the band names of the predictor variables (might be adjusted in the future if predictors can be selected according to project)
-    # bands <- list("landcover","b1","nat")
-    bands <- list("landcover")
+
     ### visualization parameter for img, mean
     cols   <- c("#e80909", "#fc8803", "#d8e03f", "#c4f25a","#81ab1f")
     maxentviz = list(bands= 'probability',min= 0, max= 1, palette= cols)
