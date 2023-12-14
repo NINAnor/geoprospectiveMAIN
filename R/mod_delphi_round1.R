@@ -212,9 +212,14 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
       rectangles <- rv$edits()$finished
 
       n_poly<-nrow(as.data.frame(rectangles))
+      if(site_type = "onshore"){
+        resolution = 250^2
+      }else{
+        resolution = 500^2
+      }
 
       #with res of 250m grid we can sample at least 10 pts with variaton within 0.6km2
-      A_min<-250*250*sqrt(10)
+      A_min<-resolution*sqrt(10)
       A_max<-0.05*round(as.numeric(st_area(sf_stud_geom)),0)
 
       if(n_poly==1){
