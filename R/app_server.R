@@ -125,8 +125,8 @@ app_server <- function(input, output, session) {
     if(site_type == "onshore"){
       # landcover
       on_lulc <- ee$Image("COPERNICUS/CORINE/V20/100m/2018")
-      on_lulc<-lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
-      on_lulc<-lulc$clip(site_geom_ee)$rename("on_lulc")
+      on_lulc<-on_lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=100)
+      on_lulc<-on_lulc$clip(site_geom_ee)$rename("on_lulc")
 
       #Hill et al., 2022: ecosystem integrity (structure, composition, and function against current actual potential as baseline) (0-1)
       on_int<-"projects/eu-wendy/assets/ON_INT"
@@ -151,14 +151,14 @@ app_server <- function(input, output, session) {
       ## lulc sea
       off_lulc<-"projects/eu-wendy/assets/OFF_LULC"
       off_lulc<-ee$Image(off_lulc)
-      off_lulc<-es_int$clip(site_geom_ee)
-      off_lulc<-es_int$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
-      off_lulc<-es_int$rename("off_lulc")
+      off_lulc<-off_lulc$clip(site_geom_ee)
+      off_lulc<-off_lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
+      off_lulc<-off_lulc$rename("off_lulc")
 
       # dist coast
       off_acc<-"projects/eu-wendy/assets/OFF_ACC"
       off_acc<-ee$Image(off_acc)
-      off_acc<-es_int$clip(site_geom_ee)
+      off_acc<-off_acc$clip(site_geom_ee)
       off_acc<-off_acc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
       off_acc<-off_acc$rename("off_acc")
 
@@ -293,6 +293,7 @@ app_server <- function(input, output, session) {
     userID<-userID()
     site_id<-site_id()
     bands<-bands()
+    site_type<-site_type()
 
     for (i in 2:num_tabs) {
       runjs(paste("$('.nav-tabs li:nth-child(", i, ")').hide();"))
@@ -311,7 +312,8 @@ app_server <- function(input, output, session) {
                                      as.numeric(i),
                                      userID,
                                      site_id,
-                                     table_con)
+                                     table_con,
+                                     site_type)
       #reactive value from module as event
       observeEvent(rv$a(), {
         next_tab <- i+1
