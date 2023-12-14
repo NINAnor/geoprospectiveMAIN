@@ -193,7 +193,8 @@ app_server <- function(input, output, session) {
     site_id<-site_id()
     es_study<-tbl(con, "es_study")
     stud_es<-es_study%>%filter(siteID == site_id)%>%collect()
-
+    #shuffle rows randomly that not all the participants have the same order of mapping es
+    stud_es<-stud_es[sample(nrow(stud_es)),]
   })
 
   num_tabs<-eventReactive(input$sub0,{
