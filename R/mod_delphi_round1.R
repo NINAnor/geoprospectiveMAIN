@@ -110,7 +110,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
     map<-leaflet(sf_stud_geom)%>%
       addPolygons(color = "orange", weight = 3, smoothFactor = 0.5,
                   opacity = 1.0, fillOpacity = 0)%>%
-      addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 10, maxZoom = 14))%>%
+      addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 8, maxZoom = 15))%>%
       addDrawToolbar(targetGroup='drawPoly',
                      polylineOptions = F,
                      polygonOptions = F,
@@ -123,7 +123,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
 
     # second for results
     map_res<-leaflet(sf_stud_geom)%>%
-      addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 10, maxZoom = 15))%>%
+      addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 8, maxZoom = 15))%>%
       addDrawToolbar(targetGroup='drawPoly',
                      polylineOptions = F,
                      polygonOptions = F,
@@ -212,7 +212,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
       rectangles <- rv$edits()$finished
 
       n_poly<-nrow(as.data.frame(rectangles))
-      if(site_type = "onshore"){
+      if(site_type == "onshore"){
         resolution = 250^2
       }else{
         resolution = 500^2
@@ -528,7 +528,7 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
         incProgress(amount = 0.2,message = "prepare training data")
 
         #cellsize
-        if(site_type = "onshore"){
+        if(site_type == "onshore"){
           resolution<-250*250
         }else{
           resolution<-500*500

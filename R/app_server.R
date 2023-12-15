@@ -147,6 +147,7 @@ app_server <- function(input, output, session) {
       off_bat = ee$Image('NOAA/NGDC/ETOPO1')$select('bedrock')
       off_bat<-off_bat$resample("bilinear")$reproject(crs= "EPSG:4326")
       off_bat<-off_bat$clip(site_geom_ee)
+      off_bat<-off_bat$rename("off_bat")
 
       ## lulc sea
       off_lulc<-"projects/eu-wendy/assets/OFF_LULC"
@@ -182,7 +183,7 @@ app_server <- function(input, output, session) {
     if(site_type == "onshore"){
       bands<-list("on_lulc","on_int","on_acc")
     }else{
-      bands<-list("off_bat","off_lulc","off_ac","off_nat")
+      bands<-list("off_bat","off_lulc","off_acc","off_nat")
     }
 
 
@@ -194,7 +195,8 @@ app_server <- function(input, output, session) {
     es_study<-tbl(con, "es_study")
     stud_es<-es_study%>%filter(siteID == site_id)%>%collect()
     #shuffle rows randomly that not all the participants have the same order of mapping es
-    stud_es<-stud_es[sample(nrow(stud_es)),]
+    # stud_es<-as.data.frame(stud_es)
+    # stud_es<-stud_es[sample(nrow(stud_es)),]
   })
 
   num_tabs<-eventReactive(input$sub0,{

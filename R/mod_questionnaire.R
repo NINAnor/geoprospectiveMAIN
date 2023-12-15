@@ -124,7 +124,7 @@ mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_ty
       leaflet(sf_stud_geom) %>%
         addPolygons(color = "orange", weight = 3, smoothFactor = 0.5,
                     opacity = 1.0, fillOpacity = 0)%>%
-        addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 10, maxZoom = 13))
+        addProviderTiles(providers$CartoDB.Positron,options = tileOptions(minZoom = 8, maxZoom = 15))
     })
 
     output$cond_b1<-renderUI({
@@ -182,7 +182,7 @@ mod_questionnaire_server <- function(id, user_id, site_id, sf_stud_geom, site_ty
       if(input$liv_in_area == "yes"){
 
         map_liv<- leaflet() %>%
-          addProviderTiles(provider= "CartoDB.Positron")%>%
+          addProviderTiles(provider= "CartoDB.Positron",options = tileOptions(minZoom = 8, maxZoom = 15))%>%
           addFeatures(st_sf(grd), layerId = ~seq_len(length(grd)))
 
       }
