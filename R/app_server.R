@@ -153,7 +153,7 @@ app_server <- function(input, output, session) {
       off_lulc<-"projects/eu-wendy/assets/OFF_LULC"
       off_lulc<-ee$Image(off_lulc)
       off_lulc<-off_lulc$clip(site_geom_ee)
-      off_lulc<-off_lulc$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
+      off_lulc<-off_lulc$resample("bilinear")$reproject(crs= "EPSG:4326")
       off_lulc<-off_lulc$rename("off_lulc")
 
       # dist coast
@@ -170,7 +170,9 @@ app_server <- function(input, output, session) {
       off_nat<-off_nat$resample("bilinear")$reproject(crs= "EPSG:4326",scale=1000)
       off_nat<-off_nat$rename("off_nat")
 
-      comb<-ee$Image$cat(off_bat,off_lulc,off_acc,off_nat)
+      # comb<-ee$Image$cat(off_bat,off_lulc,off_acc,off_nat)
+      comb<-ee$Image$cat(off_nat,off_bat,off_acc,off_lulc)
+
     }
 
 
@@ -183,7 +185,8 @@ app_server <- function(input, output, session) {
     if(site_type == "onshore"){
       bands<-list("on_lulc","on_int","on_acc")
     }else{
-      bands<-list("off_bat","off_lulc","off_acc","off_nat")
+      # bands<-list("off_bat","off_lulc","off_acc","off_nat")
+      bands<-list("off_nat","off_bat","off_acc","off_lulc")
     }
 
 

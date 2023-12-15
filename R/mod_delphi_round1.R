@@ -575,20 +575,21 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
 
         }
         pts_ee<-rbind(pts_out,pts_in)
-        # ee object of sampling pts 6k pts = 7sec
+
+        # ee object of sampling pts 6k pts = 7sec / 12k - 15s
         pts_ee<-rgee::sf_as_ee(pts_ee, via = "getInfo")
 
         # define target bands of comb (indep. var) and sample vars by pts
-        pts_ee = comb$select(bands)$sampleRegions(collection= pts_ee,
+        pts_train = comb$select(bands)$sampleRegions(collection= pts_ee,
                                                   properties = list("inside"),
                                                   geometries = T
         )
-
+        # a<-ee_as_sf(pts_train)
         ############ maxent
         incProgress(amount = 0.2,message = "calculate map")
 
         mEntclass = ee$Classifier$amnhMaxent()$train(
-          features = pts_ee,
+          features = pts_train,
           classProperty = 'inside',
           inputProperties = bands
         )
@@ -627,7 +628,6 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
         incProgress(amount = 0.1,message = "update data base")
         # write to bq
         insert_upload_job(table_con$project, table_con$dataset, "es_mappingR1", train_param)
-        # write.csv(train_param,"C:/Users/reto.spielhofer/OneDrive - NINA/Documents/Projects/GEOPROSPECTIVE/mapping_R1.csv")
 
         prediction<-imageClassified$select("probability")
 
