@@ -224,9 +224,6 @@ app_server <- function(input, output, session) {
   print(userID)
 
   observeEvent(input$email,{
-    # output$cond_1<-renderUI({
-    #   actionButton("sub1","start")
-    # })
     req(site_id)
     site_id<-site_id()
     user_conf<-tbl(con, "user_conf")%>%collect()
