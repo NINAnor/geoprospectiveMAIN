@@ -64,6 +64,7 @@ app_server <- function(input, output, session) {
   studies<-eventReactive(input$site_id,{
     study_site<-tbl(con, "study_site")
     studies<-study_site%>%select(siteID,siteTYPE,siteNMAPPING,siteSTATUS,siteCREATETIME)%>%collect()
+    studies<-studies%>%filter(siteID == input$site_id)
 
   })
 
@@ -99,14 +100,14 @@ app_server <- function(input, output, session) {
   site_id<-eventReactive(input$sub0,{
     req(studies)
     studies<-studies()
-      site_id<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteID)%>%first())
+      site_id<-studies$siteID
   })
 
   ##extract site_type
   site_type<-eventReactive(input$sub0,{
     req(studies)
     studies<-studies()
-    site_type<-as.character(studies%>%filter(siteID==input$site_id)%>%select(siteTYPE)%>%first())
+    site_type<-as.character(studies$siteTYPE)
   })
 
   ## extract study geometry
@@ -197,16 +198,21 @@ app_server <- function(input, output, session) {
     site_id<-site_id()
     es_study<-tbl(con, "es_study")
     stud_es<-es_study%>%filter(siteID == site_id)%>%collect()
+    stud_es<-stud_es[sample(nrow(stud_es)),]
     #shuffle rows randomly that not all the participants have the same order of mapping es
     # stud_es<-as.data.frame(stud_es)
-    # stud_es<-stud_es[sample(nrow(stud_es)),]
+    #
+  })
+
+  observeEvent(input$sub0,{
+    stud_es<-stud_es()
+    print(stud_es)
   })
 
   num_tabs<-eventReactive(input$sub0,{
-    req(site_id)
-    site_id<-site_id()
+    req(studies)
     studies<-studies()
-    num_tabs<-as.numeric(studies%>%filter(siteID == site_id)%>%select(siteNMAPPING))
+    num_tabs<-as.integer(studies$siteNMAPPING)
   })
 
   # email submitted
@@ -215,15 +221,19 @@ app_server <- function(input, output, session) {
     userID<-stri_rand_strings(1, nchar, pattern = "[A-Za-z0-9]")
   })
 
+  print(userID)
+
   observeEvent(input$email,{
+    # output$cond_1<-renderUI({
+    #   actionButton("sub1","start")
+    # })
     req(site_id)
     site_id<-site_id()
-    userR1<-tbl(con, "es_mappingR1")
-    user_conf<-tbl(con, "user_conf")
-    userR1<-left_join(userR1,user_conf,by="userID")%>%collect()
-    userR1<- userR1%>%select(userMAIL,siteID)%>%filter(siteID == input$site_id)
+    user_conf<-tbl(con, "user_conf")%>%collect()
+    user_conf<-user_conf%>%filter(siteID == site_id)
 
-    if(input$email %in% userR1$userMAIL){
+
+    if(input$email %in% user_conf$userMAIL){
       output$cond_1<-renderUI({
         h5("email for this study already present")
       })
