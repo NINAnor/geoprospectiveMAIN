@@ -245,7 +245,8 @@ app_server <- function(input, output, session) {
     user_conf<-data.frame(
       userID = userID,
       userMAIL = input$email,
-      userTLOG = Sys.time()
+      userTLOG = Sys.time(),
+      siteID = site_id
     )
     insert_upload_job(table_con$project, table_con$dataset, "user_conf", user_conf)
 
