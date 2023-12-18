@@ -471,7 +471,8 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
     ### predict probability of ES with maxent, save prediction, save poly and save drawing summaries on gee/bq
 
     ### gather poly
-    prediction<-eventReactive(input$submit, {
+    # prediction<-eventReactive(input$submit, {
+    observeEvent(input$submit, {
       req(mapTIME_end)
       mapTIME_end<-mapTIME_end()
 
@@ -670,23 +671,19 @@ mod_delphi_round1_server <- function(id, sf_stud_geom, comb, bands, rand_es_sel,
           "Probability of ES",
           opacity = 0.4)
       })
-      prediction<-prediction
-
-    })
-
-    observe({
-      req(prediction)
+      # prediction<-prediction
       output$gee_map <- renderLeaflet({
-        prediction()
+        prediction
       })
-      # outputOptions(output, "gee_map", suspendWhenHidden = FALSE)
+
       output$btn_cond<-renderUI({
         req(prediction)
         actionButton(ns("confirm2"), "Next task", class='btn-primary')
       })
 
+    })
 
-    })#/observe
+
     #modify reactive value to trigger cond
     observeEvent(input$confirm2,{
       rv1$u <-reactive({1})
